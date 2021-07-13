@@ -1,0 +1,12 @@
+
+0x28, 0x99, 0xBE, 0x76, 0xE0, 0x01, 0x3C, 0x6B
+{40, 153, 190, 118, 224, 1, 60, 107};
+
+display.ssd1306_command(SSD1306_SETCONTRAST);
+display.ssd1306_command(c); // Where c is a value from 0 to 255 (sets contrast e.g. brightness)
+
+
+display.ssd1306_command(SSD1306_DISPLAYOFF); // To switch display off
+
+
+display.ssd1306_command(SSD1306_DISPLAYON); // To switch display back on
