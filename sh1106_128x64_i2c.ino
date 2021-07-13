@@ -5,6 +5,9 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <EEPROM.h>
+#include <MemoryFree.h>;
+#include <pgmStrToRAM.h>; // not needed for new way. but good to have for reference.
+
 //temperatura:
 // Data wire is plugged into port 2 on the Arduino
 const byte oneWireBus = 4;
@@ -38,13 +41,20 @@ byte displayPage = 2; //dana strona glowna
 byte PageNumber = 1; //numer wewnetrznej strony o autorze
 char *displayItemText = "Alarm";
   char  *myStrings[]  = {"Alarm1", "Alarm2", "Alarm3"};
+
+  const char string_0[] PROGMEM = "String 0"; // "String 0" etc are strings to store - change to suit.
+const char string_1[] PROGMEM = "String 1";
+const char string_2[] PROGMEM = "String 2";
+const char string_3[] PROGMEM = "String 3";
+const char string_4[] PROGMEM = "String 4";
+const char string_5[] PROGMEM = "String 5";
+char *optionsMenu2[]  = {string_1};
+
   char *optionsMenu[]  = {"Alarm", "GPS", "Temperatura", "Czujnik ruchu", "O Autorze",};
 short iter=0, pozycja_startowa=0;
 //opcje
 boolean alarm = false;
 boolean gps = true;
-
-double a=1,b=3,c=4,d=4,e=5,f=6,g,h,i,j,k,l,m,n,o,p,r,s,t,u,w,z,x;
 
 
 //detekor ruchu
@@ -168,7 +178,7 @@ delay(100);
   // Start up the library
   sensors.begin();
 delay(100);
-
+Serial.println(freeMemory());
 
 
 
@@ -184,12 +194,14 @@ delay(100);
 
 void loop() {
 
-          unsigned long currentMillis = millis();
+  unsigned long currentMillis = millis(); //czas odkad program wystartowal
          
 
-  xValue = analogRead(joyX);
+  xValue = analogRead(joyX); //analogowe dane z joysticka 0-1023
   yValue = analogRead(joyY);
-
+  //Serial.println(String("x: ") + xValue);
+  //Serial.println(String("y: ") + yValue);
+  //Serial.println("--");
   
 // int select2 = digitalRead(5);
  //Serial.println(select2);
@@ -207,10 +219,10 @@ void loop() {
         pozx--; 
        // Serial.print("\t");
         }
- }else if(xValue > 1000 || pressedRight)
+ }else if(xValue > 800 || pressedRight)
  {
     if (~pressedRight) pressedRight=true;
-    if (pressedRight && xValue < 1000){
+    if (pressedRight && xValue < 800){
          pressedRight=false; 
          right=true;
          Serial.println("prawo");
@@ -219,10 +231,10 @@ void loop() {
  }
 
   //gora  i dol - zabezpieczenie by nie powielac lewo,lewo,lewo,lewo przez caly czas trzymania joya
- if (yValue > 1000 || pressedDown )
+ if (yValue > 800 || pressedDown )
  {
    if (~pressedDown) pressedDown=true;
-   if (pressedDown && yValue < 1000){
+   if (pressedDown && yValue < 800){
         pressedDown=false; 
         down=true;
         Serial.println("dol");
@@ -260,7 +272,7 @@ void loop() {
 //delay(100);
  
  displayMenu(currentMillis);
-delay(20);
+//delay(20);
 
 }
 
@@ -415,6 +427,7 @@ else if (displayPage == 3)  //Strona OPCJE -> o Autorze
            break;
           }
         display.display();
+         Serial.println(freeMemory());
         
   }
 else if (displayPage == 4){ //Opcje->Alarm
@@ -557,7 +570,7 @@ void screenHeader(int x, char *header)
  }
 
 
-//OPCJE - mechanizm wyboru odpowiedniej opcji, przechodzi do poczatku listy jak jestesmy juz na koncu,
+//OPCJE - mechanizm wyboru odpowiedniej opcji, przechodzi do poczatku listy jak jestesmy juz na koncu, int wersion
 void selectSwitcher(int amountOfItem){
      if (up) //jezeli joyem do gory
        {
