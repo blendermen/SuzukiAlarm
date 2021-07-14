@@ -58,9 +58,23 @@ boolean gps = true;
 
 
 //detekor ruchu
-unsigned short sensitivity = 35;
+int sensitivity;
+
 char howManyShocksToTriggerAlarm = 4;
 char howManyShocksAlreadyTrigger = 0;
+
+unsigned short shakeSensorAnalog=0;
+char shakeSensorAnalogText[4]; //just for display purposes 23 = 0023
+byte howManyShockHasBeenTriggered = 0;  //increases any time when vibration is greater than sensitivity setting
+byte howManyShocksToTriggerAlarmx;   //value to set how many triggers are needed to perform an alarm.   
+//byte sensitivity;             //vibration sensitivity. It increases an howManyShockHasBeenTriggered only if shakeSensorAnalog readings (0-1023) >= sensitivity(0-1023)
+bool alarmTriggered = false; //global
+unsigned long IntervalForVibrationDetector = 5000; //seconds global
+//unsigned long currentMillisForVibrationDetector = millis(); loop
+unsigned long previousMillisForVibrationDetector = 0;  //global
+unsigned long previousMillisForVibrationDetector2 = 0;  //global
+byte testtime=0;
+
 
 Adafruit_SH1106 display(-1);
 
@@ -135,8 +149,9 @@ const unsigned char epd_bitmap_Suzuki_Logo_3 [] PROGMEM = {
 
 void setup()   {                
   Serial.begin(9600);
-  Serial.print("start seriala");
-
+ // Serial.print("start seriala");
+  sensitivity=100;
+  howManyShocksToTriggerAlarmx=5;
  
   //joy
   pinMode(2, INPUT_PULLUP);  //do przycisku joypada
@@ -193,9 +208,9 @@ Serial.println(freeMemory());
 
 
 void loop() {
-
+Serial.println(freeMemory());
   unsigned long currentMillis = millis(); //czas odkad program wystartowal
-         
+     //unsigned long currentMillisForVibrationDetector = millis();    
 
   xValue = analogRead(joyX); //analogowe dane z joysticka 0-1023
   yValue = analogRead(joyY);
@@ -270,11 +285,50 @@ void loop() {
 //display.println("DUPA");
 //display.display();
 //delay(100);
- 
+
+ VibrationDetector(currentMillis);
  displayMenu(currentMillis);
+ 
 //delay(20);
 
 }
+
+void VibrationDetector(unsigned long currentMillis)
+{
+   shakeSensorAnalog = analogRead(17); //czujnik ruchu podlaczony do pinu A3 0-1023
+
+     
+  //jezeli wykryjemy wstrzas większy niż ustawione sensitivity to zaliczamy howManyShockHasBeenTriggered
+  if (shakeSensorAnalog >= sensitivity )
+  {
+    howManyShockHasBeenTriggered++;  
+  }
+
+  //jezeli liczba zaliczonych wstrzasow = zadeklarowanej liczby wstrzasow by uruchomic alarm to uruchamiamy alarm.
+  if(howManyShockHasBeenTriggered == howManyShocksToTriggerAlarmx )
+  {
+    alarmTriggered = true;
+  }
+  
+  //zerujemy liczbe zarejestrowanych alarmow po czasie 5s.
+  if (currentMillis - previousMillisForVibrationDetector >= IntervalForVibrationDetector) 
+  {
+    previousMillisForVibrationDetector = currentMillis;
+    howManyShockHasBeenTriggered = 0;
+    testtime=0;
+     alarmTriggered = false;
+  }
+  
+  //test
+  if (currentMillis - previousMillisForVibrationDetector2 >= 1000) 
+  {
+    previousMillisForVibrationDetector2 = currentMillis;
+    testtime++;
+  }
+
+
+}
+
 
 void displayMenu(unsigned long currentMillis)
 {
@@ -340,19 +394,27 @@ void displayMenu(unsigned long currentMillis)
 
       //Opcje->czujnik ruchu wejscie do ekranu 
          if(displayPage == 2 && displayItemText == "Czujnik ruchu"){            
-             if(select == LOW){ delay(500); display.clearDisplay(); displayItemText="Czujnik ruchu" ; displayPage = 5; displayItem = 1;}   
+             if(select == LOW){ delay(500); display.clearDisplay(); displayItemText="Czujnik ruchu" ; displayPage = 5; displayItem = 1; Serial.println("FF");select=HIGH;}   
          }  
+         //Opcje->czujnik - ustawienie sensitivity
          if(displayItem == 1 && displayPage == 5)
          {
          if(pressedLeft && sensitivity>=0) { sensitivity--; delay(50); }
          if( pressedRight && sensitivity<=1025) { sensitivity++; delay(50); }
-         if(sensitivity == 1025){sensitivity=0;}
+         if(sensitivity == 1025){sensitivity=1;}
          else if(sensitivity == 0){sensitivity=1024;}
-         if(select == LOW  && sensitivity<=999) { sensitivity+=25; delay(500); }
+         if(select == LOW  && sensitivity<=999) { sensitivity+=25; delay(50); }
          }
+          //opcje->czujnik ustawienie howManyShocksToTriggerAlarmx
+            if(displayPage == 5 && displayItem == 2){ //wejscie do opcji o Autorze
+            if(pressedLeft && howManyShocksToTriggerAlarmx>=0) { howManyShocksToTriggerAlarmx--; delay(50); }
+            if( pressedRight && howManyShocksToTriggerAlarmx<=21) { howManyShocksToTriggerAlarmx++; delay(50); }
+            if(howManyShocksToTriggerAlarmx == 21){howManyShocksToTriggerAlarmx=1;}
+            else if(howManyShocksToTriggerAlarmx == 0){howManyShocksToTriggerAlarmx=20;}     
+          }
          //Opcje->czujnik ruchu->wstecz
-          if(displayPage == 5 && displayItem == 2){ //wejscie do opcji o Autorze
-             if(select == LOW){delay(100);displayPage=2;}     
+          if(displayPage == 5 && displayItem == 3){ //wejscie do opcji o Autorze
+             if(select == LOW){delay(100);displayPage=2;Serial.println("wst");}     
           }
           
         
@@ -487,43 +549,76 @@ else if (displayPage == 4){ //Opcje->Alarm
    }
    //Opcje->Czujnik ruchu      
 else if (displayPage == 5){ 
-//   selectSwitcher(2);
-//     screenHeader(10," Czujnik ruchu   ");
+       selectSwitcher(2);
+     screenHeader(10," Czujnik ruchu   ");
+     
 //     display.print(digitalRead(5));
 //     display.setCursor(0, 25);
-//     unsigned short shakeSensorAnalog = analogRead(17);
-//     display.print(shakeSensorAnalog);
+ //     unsigned short shakeSensorAnalog = analogRead(17);
+      
+      sprintf(shakeSensorAnalogText, "%04d", shakeSensorAnalog); //23 = 0023
+      display.print(F("A: ")); display.print(shakeSensorAnalogText); display.print(F(" hmshbt: "));display.print(howManyShockHasBeenTriggered);
 //
-//      if (displayItem == 1) 
-//          { 
-//            display.setTextColor(BLACK, WHITE);
-//          }
-//          else 
-//          {
-//            display.setTextColor(WHITE, BLACK);
-//          }
+      if (displayItem == 1) 
+          { 
+            display.setTextColor(BLACK, WHITE);
+          }
+          else 
+          {
+            display.setTextColor(WHITE, BLACK);
+          }
 // 
-//     display.setCursor(0, 35);
-//     display.print(F("Sensitivity: "));
-//     display.print(sensitivity);
+     display.setCursor(0, 25);
+    display.print(F("Sensitivity: "));
+     display.print(sensitivity);
+     //Serial.println("sensitivity: ");Serial.print(sensitivity);
+     
 //     //todo + przeniesc wykrywanie i obsluge alarmu po wstrzasie do zewnetrzej funkcji. Alarm ma dzialac bez ekranu nawet.
 //     //zapis sensitivity do pamieci/ podzial sensitivity na 4 czesci
 //   //  if (shakeSensorAnalog >= sensitivity ){howManyShocksAlreadyTrigger++;  display.setCursor(0, 45); display.print("TRIGGERED");display.print(howManyShocksAlreadyTrigger);}
 ////howManyShocksToTriggerAlarmx
 ////howManyShocksAlreadyTrigger
-//       if (displayItem == 2) 
-//          { 
-//            display.setTextColor(BLACK, WHITE);
-//          }
-//          else 
-//          {
-//            display.setTextColor(WHITE, BLACK);
-//          }
+
+ if (displayItem == 2) 
+          { 
+            display.setTextColor(BLACK, WHITE);
+          }
+          else 
+          {
+            display.setTextColor(WHITE, BLACK);
+          }
+          
+ display.setCursor(0, 35);
+    display.print(F("hmstta: ")); display.print(howManyShocksToTriggerAlarmx);
+   // Serial.println("howManyShocksToTriggerAlarmx: ");Serial.print(howManyShocksToTriggerAlarmx);
+
+
+   display.setTextColor(WHITE, BLACK);
+    
+    display.setCursor(0, 45);
+  display.print(F("alarmTriggered: ")); display.print(alarmTriggered);
+    //Serial.println("alarmTriggered: ");Serial.print(alarmTriggered);
+
+
+
+
+
+
+
+    
+       if (displayItem == 3) 
+          { 
+            display.setTextColor(BLACK, WHITE);
+          }
+          else 
+          {
+            display.setTextColor(WHITE, BLACK);
+          }
 //          
-//           display.setCursor(0, 55);
-//           display.print(F("<-Wstecz "));
+           display.setCursor(0, 55);
+           display.print(F("<-Wstecz "));
 //              
-//      display.display();
+     display.display();
  }
  //Opcje->Temperatura   
  else if (displayPage == 6){     
