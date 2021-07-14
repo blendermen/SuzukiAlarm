@@ -8,6 +8,7 @@
 #include <MemoryFree.h>;
 #include <pgmStrToRAM.h>; // not needed for new way. but good to have for reference.
 
+
 //temperatura:
 // Data wire is plugged into port 2 on the Arduino
 const byte oneWireBus = 4;
@@ -150,9 +151,27 @@ const unsigned char epd_bitmap_Suzuki_Logo_3 [] PROGMEM = {
 void setup()   {                
   Serial.begin(9600);
  // Serial.print("start seriala");
-  sensitivity=100;
-  howManyShocksToTriggerAlarmx=5;
  
+  
+
+//Mapa pamieci EEPROM:
+//  address         zmienna
+//  0-1             sensitivity
+//  2               howManyShocksToTriggerAlarmx
+
+
+//zapis defaultowych danych do pamieci. jezeli juz jakas wartosc tam istnieje to nie robie nic.
+
+//dla sensitivity(int = 2 bajty, a więc adres= 0-1.
+writeDefaultIntValuesIntoEEPROM(0,100); //zapis wartosci w komorkach od 0 do 1
+sensitivity=readIntFromEEPROM(0); //funkcja wie, że ma odczytac adresy od 0-1 (bo int = 2 bajty, a więc adres= 0-1).
+
+//dla howManyShocksToTriggerAlarmx (1 bajt, a wiec jeden adres)
+writeDefaultByteValuesIntoEEPROM(2,(byte)5); //w adresie numer 2, zapisuje numer 5 - jest to wersja dla jednego bajta
+howManyShocksToTriggerAlarmx=readByteFromEEPROM(2);
+ Serial.println(readIntFromEEPROM(0));
+ Serial.println(howManyShocksToTriggerAlarmx);
+ Serial.println("----");
   //joy
   pinMode(2, INPUT_PULLUP);  //do przycisku joypada
   pinMode(5, INPUT);  //do czujnika ruchu
@@ -208,7 +227,7 @@ Serial.println(freeMemory());
 
 
 void loop() {
-Serial.println(freeMemory());
+//Serial.println(freeMemory());
   unsigned long currentMillis = millis(); //czas odkad program wystartowal
      //unsigned long currentMillisForVibrationDetector = millis();    
 
@@ -472,17 +491,20 @@ else if (displayPage == 3)  //Strona OPCJE -> o Autorze
           display.println(F("Autor projektu"));
           display.println(F("Marcin Mazur"));
           display.println(F("Bialaczow 2021"));
+          display.println(F("\n\n<-Wstecz      Dalej->"));
           break;
           case 2:
          ;
          display.println(F("Alarm/GPS dla"));
          display.println(F("Suzuki GZ Marauder"));
+         display.println(F("\n\n             Dalej->"));
 
           break;
           case 3:
           
          display.println(F("Rozpoczecie projektu"));
-         display.println(F("Rozpoczecie projektu"));
+         display.println(F("06/07/2021"));
+         display.println(F("\n\n             Dalej->"));
           break;
           default:
           // statements
@@ -549,7 +571,7 @@ else if (displayPage == 4){ //Opcje->Alarm
    }
    //Opcje->Czujnik ruchu      
 else if (displayPage == 5){ 
-       selectSwitcher(2);
+       selectSwitcher(3);
      screenHeader(10," Czujnik ruchu   ");
      
 //     display.print(digitalRead(5));
@@ -720,3 +742,53 @@ void selectSwitcher2(int amountOfItem,   char *myStrings[]){
         }
    
         }
+
+//zapis do pamieci wartosci int(2 bajty) - bo na eepromie w jednej komorce mozna zapisac max 1B      INT save
+void writeIntIntoEEPROM(int address, int number)
+{ 
+  //01000111 11100100.
+  byte byte1 = number >> 8;   //01000111
+  byte byte2 = number & 0xFF; //11100100
+  EEPROM.write(address, byte1);
+  EEPROM.write(address + 1, byte2);
+}
+
+//odczyt danych z eeprom - dla int        INT read
+int readIntFromEEPROM(int address)
+{
+  byte byte1 = EEPROM.read(address);
+  byte byte2 = EEPROM.read(address + 1);
+  return (byte1 << 8) + byte2;
+}
+
+//odczyt danych z eeprom - dla Bajta      BAJT read
+int readByteFromEEPROM(int address)
+{
+  byte byte1 = EEPROM.read(address);
+  return byte1;
+}
+
+//zapis defaultowych wartosci przy pierwszym uruchomieniu arduino. jezeli już jakies wartosci są zapisane to nie robie oczywiscie nic. Wersja dla Int (2 bajty)       INT default write
+void writeDefaultIntValuesIntoEEPROM(int address, int number)
+{
+   byte byte1 = EEPROM.read(address);
+   byte byte2 = EEPROM.read(address + 1);
+   //jezeli komorki pamieci sa puste to zapisuje tam defaultowe dane
+   if (byte1==255 && byte2==255)
+   //Serial.println("zapisuje defaultowe wartosci dla int");
+   {
+     writeIntIntoEEPROM(address,number);
+   }
+}
+
+//zapis defaultowych wartosci przy pierwszym uruchomieniu arduino. jezeli już jakies wartosci są zapisane to nie robie oczywiscie nic. Wersja dla Bajta       BAJT default write
+void writeDefaultByteValuesIntoEEPROM(int address, byte number)
+{
+   byte byte1 = EEPROM.read(address);
+   //jezeli komorka pamieci jest pusta, to zapisuje tam defaultowe dane
+   if (byte1==255)
+   //Serial.println("zapisuje defaultowe wartosci dla bajta");
+   {
+     EEPROM.write(address, number);
+   }
+}
