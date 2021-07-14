@@ -169,13 +169,19 @@ sensitivity=readIntFromEEPROM(0); //funkcja wie, że ma odczytac adresy od 0-1 (
 //dla howManyShocksToTriggerAlarmx (1 bajt, a wiec jeden adres)
 writeDefaultByteValuesIntoEEPROM(2,(byte)5); //w adresie numer 2, zapisuje numer 5 - jest to wersja dla jednego bajta
 howManyShocksToTriggerAlarmx=readByteFromEEPROM(2);
- Serial.println(readIntFromEEPROM(0));
- Serial.println(howManyShocksToTriggerAlarmx);
- Serial.println("----");
+ 
+Serial.println(readIntFromEEPROM(0));
+Serial.println(howManyShocksToTriggerAlarmx);
+Serial.println("----");
+
+  
+  
   //joy
   pinMode(2, INPUT_PULLUP);  //do przycisku joypada
   pinMode(5, INPUT);  //do czujnika ruchu
   pinMode(17, INPUT);  //do czujnika ruchu
+ 
+  //syrena
   pinMode(3, OUTPUT); //do sterowania tranzystorem syreny 
 
   //ekran
@@ -433,7 +439,13 @@ void displayMenu(unsigned long currentMillis)
           }
          //Opcje->czujnik ruchu->wstecz
           if(displayPage == 5 && displayItem == 3){ //wejscie do opcji o Autorze
-             if(select == LOW){delay(100);displayPage=2;Serial.println("wst");}     
+             if(select == LOW)
+             {
+                writeUniqueIntIntoEEPROM(0,sensitivity);
+                writeUniqueByteValuesIntoEEPROM(2,(byte)howManyShocksToTriggerAlarmx); 
+                delay(100);
+                displayPage=2;
+                Serial.println("wst");}     
           }
           
         
@@ -762,7 +774,7 @@ int readIntFromEEPROM(int address)
 }
 
 //odczyt danych z eeprom - dla Bajta      BAJT read
-int readByteFromEEPROM(int address)
+byte readByteFromEEPROM(int address)
 {
   byte byte1 = EEPROM.read(address);
   return byte1;
@@ -792,3 +804,23 @@ void writeDefaultByteValuesIntoEEPROM(int address, byte number)
      EEPROM.write(address, number);
    }
 }
+
+//wrapper na INT save - przed zapisem sprawdza czy istnieje juz taka sama wartosc zapisana - jezeli istnieje to nie nadpisuje niepotrzenie pamieci eeprom/   INT save wrapper checking duplication
+void writeUniqueIntIntoEEPROM(int address, int number){
+  int value = readIntFromEEPROM(address);
+  if (value != number)
+  {
+    Serial.println("zapisuje unikalnego inta");
+    writeIntIntoEEPROM(address, number);
+  }
+  }
+
+//wrapper na BAJT save - przed zapisem sprawdza czy istnieje juz taka sama wartosc zapisana - jezeli istnieje to nie nadpisuje niepotrzenie pamieci eeprom/   BAJT save wrapper checking duplication
+void writeUniqueByteValuesIntoEEPROM(int address, byte number){
+  byte value = readByteFromEEPROM(address);
+  if (value != number)
+  {
+    Serial.println("zapisuje unikalnego bajta");
+    EEPROM.write(address, number);
+  }
+  }
