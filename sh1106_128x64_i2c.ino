@@ -8,6 +8,11 @@
 #include <MemoryFree.h>;
 #include <pgmStrToRAM.h>; // not needed for new way. but good to have for reference.
 
+//alarm trigger 
+byte triggeredAlarmCount = 0;
+unsigned long IntervalForTriggerAlarm = 0;
+unsigned long previousMillisForTriggerAlarm = 0;  
+
 
 //temperatura:
 // Data wire is plugged into port 2 on the Arduino
@@ -327,8 +332,9 @@ void loop() {
 
  VibrationDetector(currentMillis);
  getTemperature(currentMillis);
+ triggerAlarm(currentMillis);
  displayMenu(currentMillis);
- Serial.println(temperatureC);
+// Serial.println(temperatureC);
  
 //delay(20);
 
@@ -351,13 +357,14 @@ void VibrationDetector(unsigned long currentMillis)
     alarmTriggered = true;
   }
   
-  //zerujemy liczbe zarejestrowanych alarmow po czasie 5s.
+  //zerujemy liczbe zarejestrowanych triggerow ruchu po czasie 5s. Dzieki temu operujemy tylko na czasie 5s, czyli w ciagu 5 sekund sumujemy triggery ruchu i po tym czasie wszystko zerujemy i od nowa czekamy na nowe triggery
+  //az nie spelni sie warunek i nie uruchomimy alarmu
   if (currentMillis - previousMillisForVibrationDetector >= IntervalForVibrationDetector) 
   {
     previousMillisForVibrationDetector = currentMillis;
     howManyShockHasBeenTriggered = 0;
     testtime=0;
-     alarmTriggered = false;
+    //alarmTriggered = false; //teraz alarmTriggered jest kasowany w funkcji triggerAlarm, zaraz po syrenie alamowej
   }
   
   //test
@@ -384,10 +391,52 @@ void getTemperature(unsigned long currentMillis)
             }else
             {
               temperatureC = 0;
-              Serial.println(temperatureC);
+              //Serial.println(temperatureC);
             }
   }
 }
+
+//za pierwszym triggerem ruchu uruchamiam alarm na 2s,
+//za drugim triggerem ruchu uruchamiam alarm na 5s,
+//za trzecim triggerem ruchu uruchamiam alarm na 8s
+void triggerAlarm(unsigned long currentMillis)
+{
+  if(alarmEnabled)
+  {
+    if(!alarmTriggered){ previousMillisForTriggerAlarm=currentMillis;}
+    if(alarmTriggered)
+    {
+    
+      switch(triggeredAlarmCount)
+      {
+        case 0:
+          IntervalForTriggerAlarm = 2000;
+          break;
+        case 1:
+            IntervalForTriggerAlarm = 5000;
+          break;
+        case 2:
+          IntervalForTriggerAlarm = 8000;
+          break;
+        default:
+          triggeredAlarmCount=0;
+          break;
+         
+      } //end switch
+     
+      Serial.println("ALLARM!");
+        if (currentMillis - previousMillisForTriggerAlarm >= IntervalForTriggerAlarm)  //po danym czasie IntervalForTriggerAlarm=2,5,8s zarrzymuje alarm i eskaluje czas alarmu wyzej 2->5->8 i moze dalej?
+      {
+        previousMillisForTriggerAlarm=currentMillis;
+        alarmTriggered = false;
+        Serial.println("ALLARM STOP!");
+        Serial.println(triggeredAlarmCount);
+        triggeredAlarmCount++;
+      }
+      
+    } //alarmTriggered
+  } //alarmEnabled
+} //triggerAlarm()
 
 
 void displayMenu(unsigned long currentMillis)
@@ -619,7 +668,7 @@ else if (displayPage == 4){ //Opcje->Alarm
    //Opcje->Czujnik ruchu      
 else if (displayPage == 5){ 
        selectSwitcher(3);
-         Serial.println(currentMillis);
+        // Serial.println(currentMillis);
      screenHeader(10," Czujnik ruchu   ");
      
 //     display.print(digitalRead(5));
