@@ -19,11 +19,11 @@ DallasTemperature sensors(&oneWire);
 DeviceAddress Wortin   = { 0x28, 0x99, 0xBE, 0x76, 0xE0, 0x01, 0x3C, 0x6B };
 // Generally, you should use "unsigned long" for variables that hold time
 // The value will quickly become too large for an int to store
-unsigned long previousMillis = 0;        // will store last time LED was updated
+unsigned long previousMillisForTemperature = 0;        // will store last time LED was updated
 // constants won't change:
-const long interval PROGMEM = 1000;           // interval at which to blink (milliseconds)
-float temperatureC = 0;
-
+long intervalForTemperature;          // interval at which to blink (milliseconds)
+float temperatureC;
+char temperatureCText[5];
 //JOY
 #define joyX A0
 #define joyY A1
@@ -41,20 +41,22 @@ byte displayItem = 1; //zaznaczony element
 byte displayPage = 2; //dana strona glowna
 byte PageNumber = 1; //numer wewnetrznej strony o autorze
 char *displayItemText = "Alarm";
-  char  *myStrings[]  = {"Alarm1", "Alarm2", "Alarm3"};
-
-  const char string_0[] PROGMEM = "String 0"; // "String 0" etc are strings to store - change to suit.
-const char string_1[] PROGMEM = "String 1";
-const char string_2[] PROGMEM = "String 2";
-const char string_3[] PROGMEM = "String 3";
-const char string_4[] PROGMEM = "String 4";
-const char string_5[] PROGMEM = "String 5";
-char *optionsMenu2[]  = {string_1};
+//char  *myStrings[]  = {"Alarm1", "Alarm2", "Alarm3"};
+//
+//  const char string_0[] PROGMEM = "String 0"; // "String 0" etc are strings to store - change to suit.
+//const char string_1[] PROGMEM = "String 1";
+//const char string_2[] PROGMEM = "String 2";
+//const char string_3[] PROGMEM = "String 3";
+//const char string_4[] PROGMEM = "String 4";
+//const char string_5[] PROGMEM = "String 5";
+//char *optionsMenu2[]  = {string_1};
 
   char *optionsMenu[]  = {"Alarm", "GPS", "Temperatura", "Czujnik ruchu", "O Autorze",};
 short iter=0, pozycja_startowa=0;
+
+
 //opcje
-boolean alarm = false;
+boolean alarmEnabled;
 boolean gps = true;
 
 
@@ -152,26 +154,33 @@ void setup()   {
   Serial.begin(9600);
  // Serial.print("start seriala");
  
-  
+  temperatureC=0;
 
 //Mapa pamieci EEPROM:
 //  address         zmienna
 //  0-1             sensitivity
 //  2               howManyShocksToTriggerAlarmx
+//  3               alarmEnabled
 
 
 //zapis defaultowych danych do pamieci. jezeli juz jakas wartosc tam istnieje to nie robie nic.
 
 //dla sensitivity(int = 2 bajty, a więc adres= 0-1.
-writeDefaultIntValuesIntoEEPROM(0,100); //zapis wartosci w komorkach od 0 do 1
-sensitivity=readIntFromEEPROM(0); //funkcja wie, że ma odczytac adresy od 0-1 (bo int = 2 bajty, a więc adres= 0-1).
+writeDefaultIntValuesIntoEEPROM(0,100); //SAVE  zapis defaultowej wartosci w komorkach od 0 do 1. Jezeli  pod tym adresem jest juz jakas wartosc zapisana(!255), to nie robie nic.
+sensitivity=readIntFromEEPROM(0); //READ  funkcja wie, że ma odczytac adresy od 0-1 (bo int = 2 bajty, a więc adres= 0-1).
 
 //dla howManyShocksToTriggerAlarmx (1 bajt, a wiec jeden adres)
-writeDefaultByteValuesIntoEEPROM(2,(byte)5); //w adresie numer 2, zapisuje numer 5 - jest to wersja dla jednego bajta
-howManyShocksToTriggerAlarmx=readByteFromEEPROM(2);
- 
+writeDefaultByteValueIntoEEPROM(2,(byte)5); //SAVE   w adresie numer 2, zapisuje defaulotwy numer 5 - jest to wersja dla jednego bajta.  Jezeli  pod tym adresem jest juz jakas wartosc zapisana(!255), to nie robie nic.
+howManyShocksToTriggerAlarmx=readByteFromEEPROM(2); // READ
+
+//dla alarmEnabled
+writeDefaultByteValueIntoEEPROM(3,(byte)0);
+alarmEnabled=readByteFromEEPROM(3); // READ
+
+
 Serial.println(readIntFromEEPROM(0));
 Serial.println(howManyShocksToTriggerAlarmx);
+Serial.println(alarmEnabled);
 Serial.println("----");
 
   
@@ -216,7 +225,12 @@ display.display();
 delay(100);
  //temperatura
   // Start up the library
+ 
+  intervalForTemperature=1000;
+  sensors.setWaitForConversion(false);
+  sensors.setResolution(Wortin, 9);  //This should change the resolution to 9-bit
   sensors.begin();
+  
 delay(100);
 Serial.println(freeMemory());
 
@@ -236,7 +250,7 @@ void loop() {
 //Serial.println(freeMemory());
   unsigned long currentMillis = millis(); //czas odkad program wystartowal
      //unsigned long currentMillisForVibrationDetector = millis();    
-
+//Serial.println(currentMillis);
   xValue = analogRead(joyX); //analogowe dane z joysticka 0-1023
   yValue = analogRead(joyY);
   //Serial.println(String("x: ") + xValue);
@@ -312,7 +326,9 @@ void loop() {
 //delay(100);
 
  VibrationDetector(currentMillis);
+ getTemperature(currentMillis);
  displayMenu(currentMillis);
+ Serial.println(temperatureC);
  
 //delay(20);
 
@@ -352,6 +368,25 @@ void VibrationDetector(unsigned long currentMillis)
   }
 
 
+}
+
+
+void getTemperature(unsigned long currentMillis)
+{
+  if (currentMillis - previousMillisForTemperature >= intervalForTemperature) 
+  {
+    previousMillisForTemperature=currentMillis;
+     sensors.requestTemperaturesByAddress(Wortin); //lub sensors.requestTemperatures(); 
+    if(sensors.getTempCByIndex(0) != DEVICE_DISCONNECTED_C) 
+            {                    
+              temperatureC = sensors.getTempCByIndex(0);
+              //Serial.println(temperatureC);           -loop
+            }else
+            {
+              temperatureC = 0;
+              Serial.println(temperatureC);
+            }
+  }
 }
 
 
@@ -406,12 +441,12 @@ void displayMenu(unsigned long currentMillis)
          }
          //Opcje->Alarm->alarm on/off
           if(displayPage == 4 && displayItem == 1){ 
-             if(right){ alarm=false; right=false; digitalWrite(3, LOW);}   
-             if(left){ alarm=true; left=false;digitalWrite(3, HIGH);}
+             if(right){ alarmEnabled=false; right=false;  digitalWrite(3, LOW);}   
+             if(left){ alarmEnabled=true; left=false;  digitalWrite(3, HIGH);}
           }
            //Opcje->Alarm->wstecz
           if(displayPage == 4 && displayItem == 3){ //wejscie do opcji o Autorze
-             if(select == LOW){delay(100);displayItemText = "Alarm";displayPage=2;}     
+             if(select == LOW){writeUniqueByteValueIntoEEPROM(3,(byte)alarmEnabled);delay(100);displayItemText = "Alarm";displayPage=2;}     
           }
 
 
@@ -442,7 +477,7 @@ void displayMenu(unsigned long currentMillis)
              if(select == LOW)
              {
                 writeUniqueIntIntoEEPROM(0,sensitivity);
-                writeUniqueByteValuesIntoEEPROM(2,(byte)howManyShocksToTriggerAlarmx); 
+                writeUniqueByteValueIntoEEPROM(2,(byte)howManyShocksToTriggerAlarmx); 
                 delay(100);
                 displayPage=2;
                 Serial.println("wst");}     
@@ -543,7 +578,7 @@ else if (displayPage == 4){ //Opcje->Alarm
         display.print(F("Alarm"));
         display.setTextColor(WHITE, BLACK); display.print("   ");
          
-        if(alarm){
+        if(alarmEnabled){
           display.setTextColor(BLACK, WHITE); 
           display.print(F(" ON"));
           display.setTextColor(WHITE, BLACK); 
@@ -584,6 +619,7 @@ else if (displayPage == 4){ //Opcje->Alarm
    //Opcje->Czujnik ruchu      
 else if (displayPage == 5){ 
        selectSwitcher(3);
+         Serial.println(currentMillis);
      screenHeader(10," Czujnik ruchu   ");
      
 //     display.print(digitalRead(5));
@@ -657,28 +693,45 @@ else if (displayPage == 5){
  //Opcje->Temperatura   
  else if (displayPage == 6){     
      screenHeader(20," Temperatura ");
-      if (currentMillis - previousMillis >= interval) {
-          // save the last time you blinked the LED
-          previousMillis = currentMillis;
-          sensors.requestTemperaturesByAddress(Wortin);
-          //Odczyt w&nbsp;stopniach celsjusza
-          
-          // Check if reading was successful
-            if(sensors.getTempCByIndex(0) != DEVICE_DISCONNECTED_C) 
-            {
-                     
-                    temperatureC = sensors.getTempCByIndex(0);
-                     
-             }else{
-                 
-                       temperatureC = 0;
-              }
-             
-          }
+//      //if (currentMillis - previousMillis >= interval) {
+//      //unsigned long currentMilliss = millis();
+//          Serial.println(currentMilliss);
+//            Serial.println("----");
+//        //   Serial.println(previousMillis);
+//         //   Serial.println(interval);
+//          // save the last time you blinked the LED
+//         // previousMillis = currentMillis;
+//          sensors.requestTemperaturesByAddress(Wortin);
+//          //Odczyt w&nbsp;stopniach celsjusza
+//          
+//          // Check if reading was successful
+//            if(sensors.getTempCByIndex(0) != DEVICE_DISCONNECTED_C) 
+//            {
+//                    
+//                    temperatureC = sensors.getTempCByIndex(0);
+//                     Serial.println(temperatureC);
+//                     
+//           //  }else{
+//                 
+//                    //   temperatureC = 0;
+//              }
+//             
+//         // }
      display.setTextSize(3);
-     display.print(temperatureC);
+
+    /* 4 is mininum width, 2 is precision; float value is copied onto str_temp*/
+    char str_temp[5]; 
+dtostrf(temperatureC, 4, 2, str_temp);
+
+
+     display.print(str_temp);
      display.print(" C");
+     
+     display.setCursor(0, 55);
+     display.setTextSize(1);
+      display.println(F("<-Wstecz"));
      display.display();
+     delay(20);
  }
 
 
@@ -754,7 +807,7 @@ void selectSwitcher2(int amountOfItem,   char *myStrings[]){
         }
    
         }
-
+//FUNKCJE ZAPISU
 //zapis do pamieci wartosci int(2 bajty) - bo na eepromie w jednej komorce mozna zapisac max 1B      INT save
 void writeIntIntoEEPROM(int address, int number)
 { 
@@ -794,7 +847,7 @@ void writeDefaultIntValuesIntoEEPROM(int address, int number)
 }
 
 //zapis defaultowych wartosci przy pierwszym uruchomieniu arduino. jezeli już jakies wartosci są zapisane to nie robie oczywiscie nic. Wersja dla Bajta       BAJT default write
-void writeDefaultByteValuesIntoEEPROM(int address, byte number)
+void writeDefaultByteValueIntoEEPROM(int address, byte number)
 {
    byte byte1 = EEPROM.read(address);
    //jezeli komorka pamieci jest pusta, to zapisuje tam defaultowe dane
@@ -816,7 +869,7 @@ void writeUniqueIntIntoEEPROM(int address, int number){
   }
 
 //wrapper na BAJT save - przed zapisem sprawdza czy istnieje juz taka sama wartosc zapisana - jezeli istnieje to nie nadpisuje niepotrzenie pamieci eeprom/   BAJT save wrapper checking duplication
-void writeUniqueByteValuesIntoEEPROM(int address, byte number){
+void writeUniqueByteValueIntoEEPROM(int address, byte number){
   byte value = readByteFromEEPROM(address);
   if (value != number)
   {
@@ -824,3 +877,4 @@ void writeUniqueByteValuesIntoEEPROM(int address, byte number){
     EEPROM.write(address, number);
   }
   }
+  //FUNKCJE ZAPISU KONIEC
