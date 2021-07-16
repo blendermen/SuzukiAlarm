@@ -183,10 +183,10 @@ void setup()   {
   alarmEnabled = readByteFromEEPROM(3); // READ
 
 
-  Serial.println(readIntFromEEPROM(0));
-  Serial.println(howManyShocksToTriggerAlarmx);
-  Serial.println(alarmEnabled);
-  Serial.println("----");
+  //Serial.println(readIntFromEEPROM(0));
+  //Serial.println(howManyShocksToTriggerAlarmx);
+  //Serial.println(alarmEnabled);
+  //Serial.println("----");
 
 
 
@@ -277,7 +277,7 @@ void loop() {
     if (pressedLeft && xValue > 200) {
       pressedLeft = false;
       left = true;
-      Serial.println("lewo");
+      //Serial.println("lewo");
       pozx--;
       // Serial.print("\t");
     }
@@ -287,9 +287,9 @@ void loop() {
     if (pressedRight && xValue < 800) {
       pressedRight = false;
       right = true;
-      Serial.println("prawo");
+     // Serial.println("prawo");
       pozx++;
-      Serial.print("\t");
+     // Serial.print("\t");
     }
   }
 
@@ -300,7 +300,7 @@ void loop() {
     if (pressedDown && yValue < 800) {
       pressedDown = false;
       down = true;
-      Serial.println("dol");
+     // Serial.println("dol");
       pozy++;
       //Serial.print("\t");
     }
@@ -310,7 +310,7 @@ void loop() {
     if (pressedUp && yValue > 200) {
       pressedUp = false;
       up = true;
-      Serial.println("gora");
+     //Serial.println("gora");
       pozy--;
       //Serial.print("\t");
     }
@@ -666,47 +666,26 @@ void displayMenu(unsigned long currentMillis)
     display.setCursor(0, 15);
     switch (PageNumber) {
       case 1:
-
-        display.println(F("Autor projektu"));
-        display.println(F("Marcin Mazur"));
-        display.println(F("Bialaczow 2021"));
-        display.println(F("\n\n<-Wstecz      Dalej->"));
+        display.println(F("Autor projektu\nMarcin Mazur\nBialaczow 2021\n\n<-Wstecz      Dalej->"));
         break;
       case 2:
-        ;
-        display.println(F("Alarm/GPS dla"));
-        display.println(F("Suzuki GZ Marauder"));
-        display.println(F("\n\n             Dalej->"));
-
+        display.println(F("Alarm/GPS dla\nSuzuki GZ Marauder\n\n\n             Dalej->"));
         break;
       case 3:
-
-        display.println(F("Rozpoczecie projektu"));
-        display.println(F("06/07/2021"));
-        display.println(F("\n\n             Dalej->"));
+        display.println(F("Rozpoczecie projektu\n06/07/2021\n\n\n             Dalej->"));
         break;
       default:
         // statements
         break;
     }
     display.display();
-    Serial.println(freeMemory());
-
   }
   else if (displayPage == 4) { //Opcje->Alarm
     selectSwitcher(3);
     screenHeader(49, " Alarm ");
 
 
-    if (displayItem == 1)
-    {
-      display.setTextColor(BLACK, WHITE);
-    }
-    else
-    {
-      display.setTextColor(WHITE, BLACK);
-    }
-
+    elementHighlightAndPosition(&displayItem,1,15);
     display.print(F("Alarm"));
     display.setTextColor(WHITE, BLACK); display.print("   ");
 
@@ -724,26 +703,19 @@ void displayMenu(unsigned long currentMillis)
       //display.SH1106_command(SH1106_DISPLAYOFF);
     }
 
-    if (displayItem == 2)
-    {
-      display.setTextColor(BLACK, WHITE);
-    }
-    else
-    {
-      display.setTextColor(WHITE, BLACK);
-    }
-    display.setCursor(0, 25);
+//    if (displayItem == 2)
+//    {
+//      display.setTextColor(BLACK, WHITE);
+//    }
+//    else
+//    {
+//      display.setTextColor(WHITE, BLACK);
+//    }
+    elementHighlightAndPosition(&displayItem,2,25);
+  
     display.print(F("Test"));
 
-    if (displayItem == 3)
-    {
-      display.setTextColor(BLACK, WHITE);
-    }
-    else
-    {
-      display.setTextColor(WHITE, BLACK);
-    }
-    display.setCursor(0, 35);
+     elementHighlightAndPosition(&displayItem,3,35);
     display.print(">Wstecz");
 
     display.display();
@@ -761,16 +733,7 @@ void displayMenu(unsigned long currentMillis)
     sprintf(shakeSensorAnalogText, "%04d", shakeSensorAnalog); //23 = 0023
     display.print(F("A: ")); display.print(shakeSensorAnalogText); display.print(F(" hmshbt: ")); display.print(howManyShockHasBeenTriggered);
     //
-    if (displayItem == 1)
-    {
-      display.setTextColor(BLACK, WHITE);
-    }
-    else
-    {
-      display.setTextColor(WHITE, BLACK);
-    }
-    //
-    display.setCursor(0, 25);
+    elementHighlightAndPosition(&displayItem,1,25);
     display.print(F("Sensitivity: "));
     display.print(sensitivity);
     //Serial.println("sensitivity: ");Serial.print(sensitivity);
@@ -781,16 +744,7 @@ void displayMenu(unsigned long currentMillis)
     ////howManyShocksToTriggerAlarmx
     ////howManyShocksAlreadyTrigger
 
-    if (displayItem == 2)
-    {
-      display.setTextColor(BLACK, WHITE);
-    }
-    else
-    {
-      display.setTextColor(WHITE, BLACK);
-    }
-
-    display.setCursor(0, 35);
+     elementHighlightAndPosition(&displayItem,2,35);
     display.print(F("hmstta: ")); display.print(howManyShocksToTriggerAlarmx);
     // Serial.println("howManyShocksToTriggerAlarmx: ");Serial.print(howManyShocksToTriggerAlarmx);
 
@@ -801,23 +755,7 @@ void displayMenu(unsigned long currentMillis)
     display.print(F("alarmTriggered: ")); display.print(alarmTriggered);
     //Serial.println("alarmTriggered: ");Serial.print(alarmTriggered);
 
-
-
-
-
-
-
-
-    if (displayItem == 3)
-    {
-      display.setTextColor(BLACK, WHITE);
-    }
-    else
-    {
-      display.setTextColor(WHITE, BLACK);
-    }
-    //
-    display.setCursor(0, 55);
+     elementHighlightAndPosition(&displayItem,3,55);
     display.print(F("<-Wstecz "));
     //
     display.display();
@@ -883,6 +821,19 @@ void screenHeader(int x, char *header)
   display.setCursor(0, 15);
 }
 
+void elementHighlightAndPosition(byte *displayItem, byte displayItemNumber, byte y)
+{
+   if (*displayItem == displayItemNumber)
+    {
+      display.setTextColor(BLACK, WHITE);
+    }
+    else
+    {
+      display.setTextColor(WHITE, BLACK);
+    }
+      display.setCursor(0, y);
+}
+
 
 //OPCJE - mechanizm wyboru odpowiedniej opcji, przechodzi do poczatku listy jak jestesmy juz na koncu, int wersion
 void selectSwitcher(int amountOfItem) {
@@ -930,7 +881,7 @@ void selectSwitcher2(int amountOfItem,   char *myStrings[]) {
     iter--;
 
     displayItemText = myStrings[iter];
-    Serial.println(iter);
+    //Serial.println(iter);
     if (iter == -1)
     {
       iter = amountOfItem - 1;
